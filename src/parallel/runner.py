@@ -74,13 +74,20 @@ def run(
     agents: list[Agent],
     task: str,
     synthesizer: Agent | None = None,
+    subtasks: list[str] | None = None,
 ) -> ParallelResult:
-    """Run agents in parallel, collect results, then synthesize."""
+    """Run agents in parallel, collect results, then synthesize.
+
+    If *subtasks* is provided, skip LLM-based splitting and use them directly.
+    """
     result = ParallelResult()
 
-    # Split task into subtasks
-    print(f"[coordinator] splitting task for {len(agents)} agents...")
-    subtasks = _split_task(task, len(agents))
+    if subtasks is not None:
+        print(f"[coordinator] using {len(subtasks)} pre-defined subtasks...")
+    else:
+        # Split task into subtasks
+        print(f"[coordinator] splitting task for {len(agents)} agents...")
+        subtasks = _split_task(task, len(agents))
 
     if len(subtasks) < len(agents):
         subtasks.extend(["continue the remaining work"] * (len(agents) - len(subtasks)))
