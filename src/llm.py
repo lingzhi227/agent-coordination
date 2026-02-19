@@ -18,6 +18,7 @@ class LLMResponse:
     reasoning: list[str] = field(default_factory=list)
     usage: dict | None = None
     error: str | None = None
+    events: list[dict] = field(default_factory=list)  # every raw JSONL event
 
 
 def call(prompt: str, *, model: str = DEFAULT_MODEL) -> LLMResponse:
@@ -33,6 +34,7 @@ def call(prompt: str, *, model: str = DEFAULT_MODEL) -> LLMResponse:
 
     reasoning: list[str] = []
     assistant_texts: list[str] = []
+    events: list[dict] = []
     usage = None
     error = None
 
@@ -44,6 +46,9 @@ def call(prompt: str, *, model: str = DEFAULT_MODEL) -> LLMResponse:
             event = json.loads(line)
         except json.JSONDecodeError:
             continue
+
+        # Store every raw event for tracing
+        events.append(event)
 
         etype = event.get("type")
         item = event.get("item", {})
@@ -74,4 +79,5 @@ def call(prompt: str, *, model: str = DEFAULT_MODEL) -> LLMResponse:
         reasoning=reasoning,
         usage=usage,
         error=error,
+        events=events,
     )
