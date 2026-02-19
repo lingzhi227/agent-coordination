@@ -6,7 +6,7 @@ requires-python = ">=3.11"
 dependencies = []
 
 [project.scripts]
-pipeline-demo = "examples.pipeline_demo:main"
-plan-execute-demo = "examples.plan_execute_demo:main"
-parallel-demo = "examples.parallel_demo:main"
-biology-pipeline-demo = "examples.biology_pipeline_demo:main"
+pipeline-demo = "tests.examples.pipeline_demo:main"
+plan-execute-demo = "tests.examples.plan_execute_demo:main"
+parallel-demo = "tests.examples.parallel_demo:main"
+biology-pipeline-demo = "tests.examples.biology_pipeline_demo:main"

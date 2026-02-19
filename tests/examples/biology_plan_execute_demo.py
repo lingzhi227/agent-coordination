@@ -317,8 +317,8 @@ def _run_expert(agent: Agent, sub_question: dict) -> tuple[str, AgentResult]:
 
 
 def _next_run_dir() -> str:
-    """Return the next numbered run directory under outputs/plan-execute/."""
-    base = os.path.join("outputs", "plan-execute")
+    """Return the next numbered run directory under tests/outputs/plan-execute/."""
+    base = os.path.join("tests", "outputs", "plan-execute")
     os.makedirs(base, exist_ok=True)
     existing = [int(d) for d in os.listdir(base) if d.isdigit()]
     next_num = max(existing, default=0) + 1

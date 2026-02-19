@@ -11,8 +11,8 @@ Pipeline:
   -> Clinical Oncologist -> Integrative Synthesizer
 
 Outputs:
-  outputs/pipeline/<N>/pipeline_report.md  — final synthesized report
-  outputs/pipeline/<N>/pipeline_trace.json — full trace of every agent's behavior
+  tests/outputs/pipeline/<N>/pipeline_report.md  — final synthesized report
+  tests/outputs/pipeline/<N>/pipeline_trace.json — full trace of every agent's behavior
 """
 
 import os
@@ -192,7 +192,7 @@ def main():
     print(f"{'=' * 70}")
 
     # --- Determine output directory ---
-    base = os.path.join("outputs", "pipeline")
+    base = os.path.join("tests", "outputs", "pipeline")
     os.makedirs(base, exist_ok=True)
     existing = [int(d) for d in os.listdir(base) if d.isdigit()]
     out_dir = Path(base) / str(max(existing, default=0) + 1)

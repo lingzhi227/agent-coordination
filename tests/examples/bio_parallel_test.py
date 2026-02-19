@@ -138,7 +138,7 @@ def main():
     report = "\n".join(lines)
 
     # Write Markdown report
-    base = os.path.join("outputs", "parallel")
+    base = os.path.join("tests", "outputs", "parallel")
     os.makedirs(base, exist_ok=True)
     existing = [int(d) for d in os.listdir(base) if d.isdigit()]
     next_num = max(existing, default=0) + 1
