@@ -10,7 +10,7 @@ import sys
 sys.path.insert(0, ".")
 
 from src.agent import Agent
-from src.parallel.runner import run
+from src.coordinators import ParallelCoordinator
 
 
 def main():
@@ -41,12 +41,15 @@ def main():
     print(f"Workers: {', '.join(a.name for a in workers)}")
     print()
 
-    result = run(workers, task, synthesizer=synthesizer)
+    coordinator = ParallelCoordinator(workers, synthesizer=synthesizer)
+    result = coordinator.run(task)
 
+    store = result.metadata["store"]
     print(f"\n{'='*60}")
     print(f"Parallel {'succeeded' if result.success else 'FAILED'}")
-    print(f"Workers completed: {len(result.store.results)}")
-    print(f"\nSynthesized output:\n{result.final_output}")
+    print(f"Workers completed: {len(store.results)}")
+    print(f"Elapsed: {result.elapsed:.1f}s")
+    print(f"\nSynthesized output:\n{result.metadata['synthesis']}")
 
 
 if __name__ == "__main__":

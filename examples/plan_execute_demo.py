@@ -10,7 +10,7 @@ import sys
 sys.path.insert(0, ".")
 
 from src.agent import Agent
-from src.plan_execute.runner import run
+from src.coordinators import PlanExecuteCoordinator
 
 
 def main():
@@ -25,12 +25,14 @@ def main():
     print(f"Task: {task}")
     print()
 
-    result = run(executor, task)
+    coordinator = PlanExecuteCoordinator(executor)
+    result = coordinator.run(task)
 
     print(f"\n{'='*60}")
     print(f"Plan-Execute {'succeeded' if result.success else 'FAILED'}")
-    print(f"Plan steps: {len(result.plan)}")
-    print(f"Completed: {len(result.step_results)}")
+    print(f"Plan steps: {len(result.metadata['plan'])}")
+    print(f"Completed: {len(result.steps)}")
+    print(f"Elapsed: {result.elapsed:.1f}s")
     print(f"\nFinal output:\n{result.final_output}")
 
 
