@@ -158,7 +158,7 @@ def main():
 
     for step in result.steps:
         if step.trace:
-            trace_data["agents"].append(step.trace)
+            trace_data["agents"].append(step.trace.to_dict())
         else:
             trace_data["agents"].append({
                 "agent_name": step.agent_name,
