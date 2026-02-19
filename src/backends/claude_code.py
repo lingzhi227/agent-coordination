@@ -36,7 +36,7 @@ def call_claude_code(
     full_auto: bool = False,
 ) -> LLMResponse:
     """Send a prompt to Claude Code CLI and return the response with full trace."""
-    cmd = ["claude", "-p", "--output-format", "stream-json", "--model", model]
+    cmd = ["claude", "-p", "--output-format", "stream-json", "--verbose", "--model", model]
     if full_auto:
         cmd.append("--dangerously-skip-permissions")
 
