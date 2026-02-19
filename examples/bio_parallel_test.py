@@ -16,7 +16,7 @@ from pathlib import Path
 sys.path.insert(0, ".")
 
 from src.agent import Agent
-from src.parallel.runner import run
+from src.coordinators import ParallelCoordinator
 
 # ---------------------------------------------------------------------------
 # Real biology / genomics / protein-function questions
@@ -86,7 +86,8 @@ def main():
     print()
 
     # Run parallel — no synthesizer; we want raw answers stacked
-    result = run(agents, task, synthesizer=None, subtasks=subtasks)
+    coordinator = ParallelCoordinator(agents, subtasks=subtasks)
+    result = coordinator.run(task)
 
     # -----------------------------------------------------------------------
     # Build the Markdown report
@@ -105,9 +106,10 @@ def main():
     ]
 
     # Stack each agent's answer verbatim
+    store = result.metadata["store"]
     for i, (tag, question) in enumerate(QUESTIONS, 1):
         key = f"worker-{i}"
-        agent_result = result.store.results.get(key)
+        agent_result = store.results.get(key)
         lines.append(f"## Q{i}: {tag}")
         lines.append("")
         lines.append(f"**Question:** {question}")
@@ -150,18 +152,17 @@ def main():
         "mode": "parallel",
         "num_agents": len(QUESTIONS),
         "success": result.success,
+        "elapsed": result.elapsed,
         "agents": [],
     }
 
-    for i, (tag, question) in enumerate(QUESTIONS, 1):
-        key = f"worker-{i}"
-        agent_result = result.store.results.get(key)
-        if agent_result and agent_result.trace:
-            trace_data["agents"].append(agent_result.trace)
+    for step in result.steps:
+        if step.trace:
+            trace_data["agents"].append(step.trace)
         else:
             trace_data["agents"].append({
-                "agent_name": f"researcher-{tag}",
-                "error": "no result returned",
+                "agent_name": step.agent_name,
+                "error": step.error or "no trace available",
             })
 
     trace_path = out_dir / "bio_parallel_trace.json"
@@ -173,7 +174,8 @@ def main():
     print(f"\n{'=' * 70}")
     print(f"Report written to: {md_path.resolve()}")
     print(f"Trace written to:  {trace_path.resolve()}")
-    print(f"Total workers completed: {len(result.store.results)}")
+    print(f"Total workers completed: {len(store.results)}")
+    print(f"Elapsed: {result.elapsed:.1f}s")
     print(f"Errors: {len(result.errors)}")
     print(f"Success: {result.success}")
     print(f"{'=' * 70}")

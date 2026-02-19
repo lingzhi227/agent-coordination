@@ -35,18 +35,28 @@ class CentralStore:
 
 
 class ParallelCoordinator(Coordinator):
-    def __init__(self, workers: list[Agent], synthesizer: Agent | None = None):
+    def __init__(
+        self,
+        workers: list[Agent],
+        synthesizer: Agent | None = None,
+        subtasks: list[str] | None = None,
+    ):
         super().__init__("parallel")
         self.workers = workers
         self.synthesizer = synthesizer
+        self.subtasks = subtasks
 
     def _run(self, task: str) -> CoordinatorResult:
         log = StepLogger(self.name)
         store = CentralStore()
 
-        # Split task into subtasks
-        log.info(f"splitting task for {len(self.workers)} agents...")
-        subtasks = self._split_task(task, len(self.workers))
+        # Split task into subtasks (or use pre-defined ones)
+        if self.subtasks is not None:
+            log.info(f"using {len(self.subtasks)} pre-defined subtasks...")
+            subtasks = list(self.subtasks)
+        else:
+            log.info(f"splitting task for {len(self.workers)} agents...")
+            subtasks = self._split_task(task, len(self.workers))
 
         if len(subtasks) < len(self.workers):
             subtasks.extend(
