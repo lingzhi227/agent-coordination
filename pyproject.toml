@@ -1,0 +1,11 @@
+[project]
+name = "agent-coordination"
+version = "0.1.0"
+description = "Three multi-agent coordination patterns using Codex CLI"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+pipeline-demo = "examples.pipeline_demo:main"
+plan-execute-demo = "examples.plan_execute_demo:main"
+parallel-demo = "examples.parallel_demo:main"
