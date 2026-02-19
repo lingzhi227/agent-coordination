@@ -2,11 +2,9 @@
 """
 Integration test: verify the graph engine replicates all three coordination patterns.
 
-Runs each pattern using both:
-  1. The programmatic API (factory functions)
-  2. YAML graph definitions
-
-All agents use claude_code backend (Claude Sonnet) for testing.
+Tests each pattern using both the programmatic API and YAML definitions.
+Uses all three backends (codex, claude_code, gemini) across the tests to
+verify multi-backend support works end-to-end.
 """
 
 import os
@@ -29,8 +27,9 @@ from src.graph import (
 )
 from src.coordinators.graph import GraphCoordinator
 
-BACKEND = "claude_code"
-MODEL = "haiku"
+# Backend/model configs for each provider
+CLAUDE = ("claude_code", "haiku")
+GEMINI = ("gemini", "gemini-2.5-flash-lite")
 
 # Use deliberately short tasks to keep cost/time low
 PIPELINE_TASK = "List 3 benefits of unit testing in software development"
@@ -53,23 +52,21 @@ def check(label: str, condition: bool, detail: str = ""):
     return condition
 
 
-# ── 1. Pipeline ──────────────────────────────────────────────────────
+# ── 1. Pipeline (multi-backend: codex → claude → gemini) ────────────
 
 def test_pipeline_programmatic():
-    header("Pipeline — Programmatic API")
+    header("Pipeline — Programmatic API (claude → gemini → claude)")
 
     agents = [
-        Agent(name="researcher", role="You are a research agent. List key facts about the topic.", backend=BACKEND, model=MODEL),
-        Agent(name="writer", role="You are a writer. Rewrite the research as a concise paragraph.", backend=BACKEND, model=MODEL),
-        Agent(name="reviewer", role="You are a reviewer. Polish the text for clarity and return the final version.", backend=BACKEND, model=MODEL),
+        Agent(name="researcher", role="You are a research agent. List key facts about the topic.", backend=CLAUDE[0], model=CLAUDE[1]),
+        Agent(name="writer", role="You are a writer. Rewrite the research as a concise paragraph.", backend=GEMINI[0], model=GEMINI[1]),
+        Agent(name="reviewer", role="You are a reviewer. Polish the text for clarity and return the final version.", backend=CLAUDE[0], model=CLAUDE[1]),
     ]
 
     executor = pipeline(agents)
     print(f"Graph: {executor.graph.name}")
     print(f"Nodes: {list(executor.graph.nodes.keys())}")
-    print(f"Edges: {len(executor.graph.edges)}")
-    print(f"Entry: {executor.graph.entry_nodes}")
-    print(f"Exit:  {executor.graph.exit_nodes}")
+    print(f"Backends: {[executor.graph.nodes[n].backend for n in executor.graph.nodes]}")
     print()
 
     t0 = time.time()
@@ -92,26 +89,25 @@ def test_pipeline_programmatic():
 
 
 def test_pipeline_yaml():
-    header("Pipeline — YAML (via GraphCoordinator)")
+    header("Pipeline — YAML (claude → gemini → claude)")
 
-    # Build a test YAML that uses claude_code for all nodes
     yaml_data = {
-        "name": "test-pipeline",
+        "name": "test-pipeline-multibackend",
         "nodes": {
             "researcher": {
                 "role": "You are a research agent. List key facts about the topic.",
-                "backend": BACKEND,
-                "model": MODEL,
+                "backend": CLAUDE[0],
+                "model": CLAUDE[1],
             },
             "writer": {
                 "role": "You are a writer. Rewrite the research as a concise paragraph.",
-                "backend": BACKEND,
-                "model": MODEL,
+                "backend": GEMINI[0],
+                "model": GEMINI[1],
             },
             "reviewer": {
                 "role": "You are a reviewer. Polish the text and return the final version.",
-                "backend": BACKEND,
-                "model": MODEL,
+                "backend": CLAUDE[0],
+                "model": CLAUDE[1],
             },
         },
         "edges": [
@@ -140,22 +136,21 @@ def test_pipeline_yaml():
     return passed, result
 
 
-# ── 2. Parallel ──────────────────────────────────────────────────────
+# ── 2. Parallel (codex + gemini workers, claude synthesizer) ─────────
 
 def test_parallel_programmatic():
-    header("Parallel — Programmatic API")
+    header("Parallel — Programmatic API (gemini + claude workers, claude synth)")
 
     workers = [
-        Agent(name="backend_expert", role="You are a backend expert. Give 2-3 key backend considerations.", backend=BACKEND, model=MODEL),
-        Agent(name="frontend_expert", role="You are a frontend expert. Give 2-3 key frontend considerations.", backend=BACKEND, model=MODEL),
+        Agent(name="backend_expert", role="You are a backend expert. Give 2-3 key backend considerations.", backend=GEMINI[0], model=GEMINI[1]),
+        Agent(name="frontend_expert", role="You are a frontend expert. Give 2-3 key frontend considerations.", backend=CLAUDE[0], model=CLAUDE[1]),
     ]
-    synth = Agent(name="synthesizer", role="You are a tech lead. Combine expert inputs into a unified summary.", backend=BACKEND, model=MODEL)
+    synth = Agent(name="synthesizer", role="You are a tech lead. Combine expert inputs into a unified summary.", backend=CLAUDE[0], model=CLAUDE[1])
 
     executor = parallel(workers, synthesizer=synth)
     print(f"Graph: {executor.graph.name}")
     print(f"Nodes: {list(executor.graph.nodes.keys())}")
-    print(f"Entry: {executor.graph.entry_nodes}")
-    print(f"Exit:  {executor.graph.exit_nodes}")
+    print(f"Backends: {[executor.graph.nodes[n].backend for n in executor.graph.nodes]}")
     print()
 
     t0 = time.time()
@@ -181,25 +176,25 @@ def test_parallel_programmatic():
 
 
 def test_parallel_yaml():
-    header("Parallel — YAML (via parse_graph)")
+    header("Parallel — YAML (gemini + claude workers, claude synth)")
 
     yaml_data = {
-        "name": "test-parallel",
+        "name": "test-parallel-multibackend",
         "nodes": {
             "backend_expert": {
                 "role": "You are a backend expert. Give 2-3 key backend considerations.",
-                "backend": BACKEND,
-                "model": MODEL,
+                "backend": GEMINI[0],
+                "model": GEMINI[1],
             },
             "frontend_expert": {
                 "role": "You are a frontend expert. Give 2-3 key frontend considerations.",
-                "backend": BACKEND,
-                "model": MODEL,
+                "backend": CLAUDE[0],
+                "model": CLAUDE[1],
             },
             "synthesizer": {
                 "role": "You are a tech lead. Combine expert inputs into a unified summary.",
-                "backend": BACKEND,
-                "model": MODEL,
+                "backend": CLAUDE[0],
+                "model": CLAUDE[1],
             },
         },
         "edges": [
@@ -230,22 +225,23 @@ def test_parallel_yaml():
     return passed, result
 
 
-# ── 3. Plan-Execute ──────────────────────────────────────────────────
+# ── 3. Plan-Execute (codex planner, gemini executor) ─────────────────
 
 def test_plan_execute_programmatic():
-    header("Plan-Execute — Programmatic API")
+    header("Plan-Execute — Programmatic API (claude planner, gemini executor)")
 
     executor_agent = Agent(
         name="executor",
         role="You are a skilled engineer. Complete the assigned subtask. Be concise (2-3 sentences).",
-        backend=BACKEND,
-        model=MODEL,
+        backend=GEMINI[0],
+        model=GEMINI[1],
     )
 
-    executor = plan_execute(executor_agent, planning_backend=BACKEND)
+    executor = plan_execute(executor_agent, planning_backend=CLAUDE[0])
     print(f"Graph: {executor.graph.name}")
     print(f"Nodes: {list(executor.graph.nodes.keys())}")
-    print(f"Dynamic node: planner (expand=sequential)")
+    print(f"Planner backend: {executor.graph.nodes['planner'].llm_call.backend}")
+    print(f"Executor backend: {executor.graph.nodes['executor'].backend}")
     print()
 
     t0 = time.time()
@@ -267,17 +263,17 @@ def test_plan_execute_programmatic():
 
 
 def test_plan_execute_yaml():
-    header("Plan-Execute — YAML (via parse_graph)")
+    header("Plan-Execute — YAML (gemini planner, claude executor)")
 
     yaml_data = {
-        "name": "test-plan-execute",
+        "name": "test-plan-execute-multibackend",
         "nodes": {
             "planner": {
                 "type": "dynamic",
                 "expand": "sequential",
                 "llm_call": {
-                    "backend": BACKEND,
-                    "model": MODEL,
+                    "backend": GEMINI[0],
+                    "model": GEMINI[1],
                     "prompt": (
                         "Break the following task into 2-3 concrete subtasks. "
                         "Return ONLY a JSON array of strings, no other text.\n\n"
@@ -288,8 +284,8 @@ def test_plan_execute_yaml():
             },
             "executor": {
                 "role": "You are a skilled engineer. Complete the assigned subtask. Be concise (2-3 sentences).",
-                "backend": BACKEND,
-                "model": MODEL,
+                "backend": CLAUDE[0],
+                "model": CLAUDE[1],
             },
         },
         "edges": [
@@ -323,7 +319,7 @@ def test_plan_execute_yaml():
 def main():
     print("=" * 70)
     print("  Graph Engine Integration Tests — All Three Patterns")
-    print(f"  Backend: {BACKEND} | Model: {MODEL}")
+    print(f"  Backends: claude_code (haiku), gemini (2.5-flash-lite)")
     print("=" * 70)
 
     results = {}
