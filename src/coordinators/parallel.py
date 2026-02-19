@@ -8,7 +8,7 @@ A synthesizer agent combines all results.
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 
-from src import llm
+from src.backends import Backend, call as backend_call
 from src.agent import Agent, AgentResult
 from src.base import Coordinator, CoordinatorResult
 from src.logging import StepLogger
@@ -40,11 +40,13 @@ class ParallelCoordinator(Coordinator):
         workers: list[Agent],
         synthesizer: Agent | None = None,
         subtasks: list[str] | None = None,
+        planning_backend: Backend | str = Backend.CODEX,
     ):
         super().__init__("parallel")
         self.workers = workers
         self.synthesizer = synthesizer
         self.subtasks = subtasks
+        self.planning_backend = planning_backend
 
     def _run(self, task: str) -> CoordinatorResult:
         log = StepLogger(self.name)
@@ -110,14 +112,13 @@ class ParallelCoordinator(Coordinator):
             metadata={"store": store, "synthesis": synthesis, "pattern": "parallel"},
         )
 
-    @staticmethod
-    def _split_task(task: str, n: int) -> list[str]:
+    def _split_task(self, task: str, n: int) -> list[str]:
         prompt = (
             f"Split the following task into exactly {n} independent subtasks "
             "that can be done in parallel. "
             "Return ONLY a JSON array of strings, no other text.\n\n"
             f"Task: {task}"
         )
-        resp = llm.call(prompt)
+        resp = backend_call(prompt, backend=self.planning_backend)
         items = parse_list_response(resp.text)
         return items[:n]
