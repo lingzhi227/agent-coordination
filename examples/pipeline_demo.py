@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, ".")
 
 from src.agent import Agent
-from src.pipeline.runner import run
+from src.coordinators import PipelineCoordinator
 
 
 def main():
@@ -35,11 +35,13 @@ def main():
     print(f"Agents: {' -> '.join(a.name for a in agents)}")
     print()
 
-    result = run(agents, task)
+    coordinator = PipelineCoordinator(agents)
+    result = coordinator.run(task)
 
     print(f"\n{'='*60}")
     print(f"Pipeline {'succeeded' if result.success else 'FAILED'}")
     print(f"Steps completed: {len(result.steps)}")
+    print(f"Elapsed: {result.elapsed:.1f}s")
     print(f"\nFinal output:\n{result.final_output}")
 
 

@@ -21,6 +21,9 @@ class Agent:
     name: str
     role: str  # describes what this agent does, injected into every prompt
 
+    def __repr__(self) -> str:
+        return f"Agent({self.name!r})"
+
     def run(self, task: str, context: str = "") -> AgentResult:
         """Execute a task with optional context from previous steps."""
         parts = [f"You are: {self.role}"]
