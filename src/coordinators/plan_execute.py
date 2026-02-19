@@ -33,10 +33,12 @@ class PlanExecuteCoordinator(Coordinator):
         steps = run_chain(
             [self.executor], plan, log, accumulate=True,
         )
+        for i, step in enumerate(steps):
+            step.step_label = f"step-{i+1}"
 
         return CoordinatorResult(
             steps=steps,
-            metadata={"plan": plan},
+            metadata={"plan": plan, "pattern": "plan-execute"},
         )
 
     @staticmethod

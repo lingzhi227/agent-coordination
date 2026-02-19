@@ -28,9 +28,12 @@ class LLMResponse:
         return self.raw_events
 
 
-def call(prompt: str, *, model: str = DEFAULT_MODEL) -> LLMResponse:
+def call(prompt: str, *, model: str = DEFAULT_MODEL, full_auto: bool = False) -> LLMResponse:
     """Send a prompt to Codex CLI and return the response."""
-    cmd = ["codex", "exec", "--json", "--model", model, prompt]
+    cmd = ["codex", "exec", "--json", "--model", model]
+    if full_auto:
+        cmd.extend(["--full-auto", "--skip-git-repo-check", "--ephemeral"])
+    cmd.append(prompt)
 
     proc = subprocess.Popen(
         cmd,

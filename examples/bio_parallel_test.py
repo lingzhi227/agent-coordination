@@ -8,7 +8,6 @@ runs them all in parallel, and writes every agent's raw answer into a
 single Markdown report file.
 """
 
-import json
 import os
 import sys
 import datetime
@@ -18,6 +17,7 @@ sys.path.insert(0, ".")
 
 from src.agent import Agent
 from src.coordinators import ParallelCoordinator
+from src.tracing import build_trace, save_trace
 
 # ---------------------------------------------------------------------------
 # Real biology / genomics / protein-function questions
@@ -151,31 +151,9 @@ def main():
     # -----------------------------------------------------------------------
     # Build and write trace JSON
     # -----------------------------------------------------------------------
-    trace_data = {
-        "generated": now,
-        "model": "gpt-5.2-codex",
-        "mode": "parallel",
-        "num_agents": len(QUESTIONS),
-        "success": result.success,
-        "elapsed": result.elapsed,
-        "agents": [],
-    }
-
-    for step in result.steps:
-        if step.trace:
-            trace_data["agents"].append(step.trace.to_dict())
-        else:
-            trace_data["agents"].append({
-                "agent_name": step.agent_name,
-                "error": step.error or "no trace available",
-            })
-
     trace_path = out_dir / "bio_parallel_trace.json"
-
-    trace_path.write_text(
-        json.dumps(trace_data, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
+    trace = build_trace(result, task=task)
+    save_trace(trace, str(trace_path))
 
     print(f"\n{'=' * 70}")
     print(f"Report written to: {md_path.resolve()}")

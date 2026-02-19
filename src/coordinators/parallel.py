@@ -75,6 +75,7 @@ class ParallelCoordinator(Coordinator):
         ) -> tuple[str, AgentResult]:
             print(f"  [{key}] {agent.name}: starting...")
             r = agent.run(subtask)
+            r.step_label = key
             print(f"  [{key}] {agent.name}: done ({len(r.output)} chars)")
             return key, r
 
@@ -97,6 +98,7 @@ class ParallelCoordinator(Coordinator):
                 f"Synthesize the following parallel results into a coherent answer for: {task}",
                 context=all_context,
             )
+            synth_result.step_label = "synthesizer"
             all_steps.append(synth_result)
             synthesis = synth_result.output
             log.info(f"synthesis done ({len(synthesis)} chars)")
@@ -105,7 +107,7 @@ class ParallelCoordinator(Coordinator):
 
         return CoordinatorResult(
             steps=all_steps,
-            metadata={"store": store, "synthesis": synthesis},
+            metadata={"store": store, "synthesis": synthesis, "pattern": "parallel"},
         )
 
     @staticmethod

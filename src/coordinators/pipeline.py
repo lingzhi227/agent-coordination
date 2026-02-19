@@ -21,4 +21,9 @@ class PipelineCoordinator(Coordinator):
         log = StepLogger(self.name)
         tasks = [task] * len(self.agents)
         steps = run_chain(self.agents, tasks, log, accumulate=False)
-        return CoordinatorResult(steps=steps)
+        for i, step in enumerate(steps):
+            step.step_label = f"stage-{i+1}-{step.agent_name}"
+        return CoordinatorResult(
+            steps=steps,
+            metadata={"pattern": "pipeline"},
+        )

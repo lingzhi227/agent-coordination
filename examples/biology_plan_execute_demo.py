@@ -24,8 +24,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 sys.path.insert(0, ".")
 
-from src.agent import Agent, AgentResult, AgentTrace
-from src import llm
+from src.agent import Agent, AgentResult
+from src.base import CoordinatorResult
+from src.tracing import build_trace, save_trace
 
 # ── The Complex Cross-Disciplinary Biology Question ─────────────────────────
 #
@@ -315,26 +316,6 @@ def _run_expert(agent: Agent, sub_question: dict) -> tuple[str, AgentResult]:
     return domain, result
 
 
-def _build_trace_entry(agent_name: str, step: str, result: AgentResult,
-                       elapsed: float) -> dict:
-    """Build a trace dict entry for one agent invocation."""
-    t = result.trace
-    return {
-        "agent_name": agent_name,
-        "step": step,
-        "elapsed_seconds": round(elapsed, 2),
-        "system_prompt": t.system_prompt if t else "",
-        "user_prompt": t.user_prompt if t else "",
-        "reasoning": t.reasoning if t else [],
-        "tool_calls": t.tool_calls if t else [],
-        "tool_results": t.tool_results if t else [],
-        "output": result.output or "",
-        "usage": t.usage if t else None,
-        "error": result.error,
-        "raw_events": t.raw_events if t else [],
-    }
-
-
 def _next_run_dir() -> str:
     """Return the next numbered run directory under outputs/plan-execute/."""
     base = os.path.join("outputs", "plan-execute")
@@ -353,7 +334,7 @@ def main():
     trace_file = os.path.join(run_dir, "biology_trace.json")
 
     output_lines: list[str] = []  # collect everything for the report file
-    trace_entries: list[dict] = []  # collect agent traces
+    all_steps: list[AgentResult] = []  # collect agent results for trace
 
     def log(text: str = ""):
         """Print and accumulate output."""
@@ -376,13 +357,9 @@ def main():
     log("=" * 80)
     log()
 
-    planner_start = time.time()
     planner_result = PLANNER.run(BIOLOGY_QUESTION)
-    planner_elapsed = time.time() - planner_start
-
-    trace_entries.append(
-        _build_trace_entry("planner", "step1_planning", planner_result, planner_elapsed)
-    )
+    planner_result.step_label = "step-1-planning"
+    all_steps.append(planner_result)
 
     if planner_result.error:
         log(f"PLANNER ERROR: {planner_result.error}")
@@ -430,26 +407,17 @@ def main():
     log(f"Launching {len(assignments)} domain experts in parallel...\n")
 
     expert_results: dict[str, AgentResult] = {}
-    expert_timings: dict[str, float] = {}
-
-    def _run_expert_timed(agent: Agent, sq: dict) -> tuple[str, AgentResult, float]:
-        start = time.time()
-        domain, result = _run_expert(agent, sq)
-        elapsed = time.time() - start
-        return domain, result, elapsed
 
     with ThreadPoolExecutor(max_workers=4) as pool:
         futures = {
-            pool.submit(_run_expert_timed, agent, sq): sq.get("domain", f"expert-{i}")
+            pool.submit(_run_expert, agent, sq): sq.get("domain", f"expert-{i}")
             for i, (agent, sq) in enumerate(assignments)
         }
         for future in as_completed(futures):
-            domain, result, elapsed = future.result()
+            domain, result = future.result()
+            result.step_label = f"step-2-{domain}"
             expert_results[domain] = result
-            expert_timings[domain] = elapsed
-            trace_entries.append(
-                _build_trace_entry(domain, "step2_expert_research", result, elapsed)
-            )
+            all_steps.append(result)
             if result.error:
                 log(f"  [{domain}] ERROR: {result.error}")
 
@@ -487,14 +455,10 @@ def main():
     )
 
     log("Synthesizer is integrating all expert findings...\n")
-    synthesis_start = time.time()
     synthesis_result = SYNTHESIZER.run(synthesis_task, context=all_context)
-    synthesis_elapsed = time.time() - synthesis_start
-    log(f"Synthesis completed in {synthesis_elapsed:.1f}s\n")
-
-    trace_entries.append(
-        _build_trace_entry("synthesizer", "step3_synthesis", synthesis_result, synthesis_elapsed)
-    )
+    synthesis_result.step_label = "step-3-synthesis"
+    all_steps.append(synthesis_result)
+    log(f"Synthesis completed in {synthesis_result.elapsed:.1f}s\n")
 
     if synthesis_result.error:
         log(f"SYNTHESIS ERROR: {synthesis_result.error}")
@@ -545,20 +509,13 @@ def main():
     log(f"\nFull report saved to: {report_file}")
 
     # ── Save trace ──────────────────────────────────────────────────────────
-    trace_data = {
-        "metadata": {
-            "timestamp": datetime.now().isoformat(),
-            "model": llm.DEFAULT_MODEL,
-            "pattern": "plan-execute",
-            "question": BIOLOGY_QUESTION,
-            "total_elapsed_seconds": round(total_elapsed, 2),
-            "total_agents": len(trace_entries),
-            "success": len(errors) == 0,
-        },
-        "agents": trace_entries,
-    }
-    with open(trace_file, "w") as f:
-        json.dump(trace_data, f, indent=2, ensure_ascii=False, default=str)
+    coord_result = CoordinatorResult(
+        steps=all_steps,
+        metadata={"pattern": "plan-execute"},
+        elapsed=total_elapsed,
+    )
+    trace = build_trace(coord_result, task=BIOLOGY_QUESTION)
+    save_trace(trace, trace_file)
     log(f"Trace saved to: {trace_file}")
 
 

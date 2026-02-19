@@ -9,3 +9,4 @@ dependencies = []
 pipeline-demo = "examples.pipeline_demo:main"
 plan-execute-demo = "examples.plan_execute_demo:main"
 parallel-demo = "examples.parallel_demo:main"
+biology-pipeline-demo = "examples.biology_pipeline_demo:main"
