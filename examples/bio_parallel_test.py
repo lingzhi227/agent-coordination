@@ -9,6 +9,7 @@ single Markdown report file.
 """
 
 import json
+import os
 import sys
 import datetime
 from pathlib import Path
@@ -137,8 +138,12 @@ def main():
     report = "\n".join(lines)
 
     # Write Markdown report
-    out_dir = Path("outputs")
-    out_dir.mkdir(parents=True, exist_ok=True)
+    base = os.path.join("outputs", "parallel")
+    os.makedirs(base, exist_ok=True)
+    existing = [int(d) for d in os.listdir(base) if d.isdigit()]
+    next_num = max(existing, default=0) + 1
+    out_dir = Path(base) / str(next_num)
+    out_dir.mkdir()
 
     md_path = out_dir / "bio_parallel_report.md"
     md_path.write_text(report, encoding="utf-8")
@@ -166,6 +171,7 @@ def main():
             })
 
     trace_path = out_dir / "bio_parallel_trace.json"
+
     trace_path.write_text(
         json.dumps(trace_data, indent=2, ensure_ascii=False),
         encoding="utf-8",

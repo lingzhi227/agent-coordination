@@ -335,11 +335,22 @@ def _build_trace_entry(agent_name: str, step: str, result: AgentResult,
     }
 
 
+def _next_run_dir() -> str:
+    """Return the next numbered run directory under outputs/plan-execute/."""
+    base = os.path.join("outputs", "plan-execute")
+    os.makedirs(base, exist_ok=True)
+    existing = [int(d) for d in os.listdir(base) if d.isdigit()]
+    next_num = max(existing, default=0) + 1
+    run_dir = os.path.join(base, str(next_num))
+    os.makedirs(run_dir)
+    return run_dir
+
+
 def main():
     run_start = time.time()
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    report_file = f"output/biology_report_{timestamp}.md"
-    trace_file = f"output/biology_trace_{timestamp}.json"
+    run_dir = _next_run_dir()
+    report_file = os.path.join(run_dir, "biology_report.md")
+    trace_file = os.path.join(run_dir, "biology_trace.json")
 
     output_lines: list[str] = []  # collect everything for the report file
     trace_entries: list[dict] = []  # collect agent traces
@@ -529,7 +540,6 @@ def main():
         log("Status:                 All agents completed successfully!")
 
     # ── Save report ─────────────────────────────────────────────────────────
-    os.makedirs("output", exist_ok=True)
     with open(report_file, "w") as f:
         f.write("\n".join(output_lines))
     log(f"\nFull report saved to: {report_file}")
