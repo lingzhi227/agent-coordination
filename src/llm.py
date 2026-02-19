@@ -16,9 +16,16 @@ DEFAULT_MODEL = "gpt-5.2-codex"
 class LLMResponse:
     text: str
     reasoning: list[str] = field(default_factory=list)
+    tool_calls: list[dict] = field(default_factory=list)
+    tool_results: list[dict] = field(default_factory=list)
+    raw_events: list[dict] = field(default_factory=list)
     usage: dict | None = None
     error: str | None = None
-    events: list[dict] = field(default_factory=list)  # every raw JSONL event
+
+    @property
+    def events(self) -> list[dict]:
+        """Alias for raw_events (backward compat)."""
+        return self.raw_events
 
 
 def call(prompt: str, *, model: str = DEFAULT_MODEL) -> LLMResponse:
@@ -34,7 +41,9 @@ def call(prompt: str, *, model: str = DEFAULT_MODEL) -> LLMResponse:
 
     reasoning: list[str] = []
     assistant_texts: list[str] = []
-    events: list[dict] = []
+    tool_calls: list[dict] = []
+    tool_results: list[dict] = []
+    raw_events: list[dict] = []
     usage = None
     error = None
 
@@ -47,17 +56,20 @@ def call(prompt: str, *, model: str = DEFAULT_MODEL) -> LLMResponse:
         except json.JSONDecodeError:
             continue
 
-        # Store every raw event for tracing
-        events.append(event)
-
+        raw_events.append(event)
         etype = event.get("type")
         item = event.get("item", {})
 
         if etype == "item.completed":
-            if item.get("type") == "reasoning" and item.get("text"):
+            itype = item.get("type")
+            if itype == "reasoning" and item.get("text"):
                 reasoning.append(item["text"])
-            elif item.get("type") == "agent_message" and item.get("text"):
+            elif itype == "agent_message" and item.get("text"):
                 assistant_texts.append(item["text"])
+            elif itype == "tool_call":
+                tool_calls.append(item)
+            elif itype == "tool_result":
+                tool_results.append(item)
 
         elif etype == "turn.completed":
             usage = event.get("usage")
@@ -77,7 +89,9 @@ def call(prompt: str, *, model: str = DEFAULT_MODEL) -> LLMResponse:
     return LLMResponse(
         text=final_text,
         reasoning=reasoning,
+        tool_calls=tool_calls,
+        tool_results=tool_results,
+        raw_events=raw_events,
         usage=usage,
         error=error,
-        events=events,
     )
