@@ -1,9 +1,11 @@
 [project]
 name = "agent-coordination"
-version = "0.1.0"
-description = "Three multi-agent coordination patterns using Codex CLI, Claude Code, and Gemini CLI"
+version = "0.2.0"
+description = "Graph-based multi-agent coordination with A2A protocol, supporting pipeline, parallel, plan-execute, and arbitrary topologies"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "pyyaml>=6.0",
+]
 
 [project.scripts]
 pipeline-demo = "tests.examples.pipeline_demo:main"

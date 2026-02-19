@@ -1,0 +1,24 @@
+name: parallel-experts
+description: "Domain experts work in parallel, synthesizer combines results"
+
+nodes:
+  backend_expert:
+    role: "You are a backend architecture expert. Analyze the backend aspects of the task."
+    backend: codex
+  frontend_expert:
+    role: "You are a frontend architecture expert. Analyze the frontend aspects of the task."
+    backend: claude_code
+  synthesizer:
+    role: "You are a tech lead. Combine all expert inputs into a unified, coherent plan."
+    backend: gemini
+
+edges:
+  - { from: _input, to: backend_expert, context_policy: none }
+  - { from: _input, to: frontend_expert, context_policy: none }
+  - from: backend_expert
+    to: synthesizer
+    context_policy: aggregate
+  - from: frontend_expert
+    to: synthesizer
+    context_policy: aggregate
+  - { from: synthesizer, to: _output }

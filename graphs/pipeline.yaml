@@ -1,0 +1,26 @@
+name: article-pipeline
+description: "Research → Draft → Review pipeline"
+
+nodes:
+  researcher:
+    role: "You are a research agent. Gather key facts, data points, and sources on the topic."
+    backend: codex
+    full_auto: true
+  writer:
+    role: "You are a writer agent. Write a clear, well-structured draft article based on the research provided."
+    backend: claude_code
+  reviewer:
+    role: "You are a review agent. Review and polish the draft for clarity, accuracy, and style."
+    backend: gemini
+
+edges:
+  - from: _input
+    to: researcher
+  - from: researcher
+    to: writer
+    context_policy: replace
+  - from: writer
+    to: reviewer
+    context_policy: replace
+  - from: reviewer
+    to: _output

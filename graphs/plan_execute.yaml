@@ -1,0 +1,24 @@
+name: plan-execute
+description: "Planner generates subtasks, executor runs them sequentially with accumulating context"
+
+nodes:
+  planner:
+    type: dynamic
+    expand: sequential
+    llm_call:
+      backend: codex
+      prompt: >
+        Break the following task into 2-5 concrete subtasks.
+        Return ONLY a JSON array of strings, no other text.
+        Task: {{task}}
+    transform: parse_list
+  executor:
+    role: "You are a skilled engineer. Complete the assigned subtask thoroughly."
+    backend: claude_code
+
+edges:
+  - { from: _input, to: planner }
+  - from: planner
+    to: executor
+    context_policy: accumulate
+  - { from: executor, to: _output }
